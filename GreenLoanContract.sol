@@ -516,6 +516,39 @@ contract GreenLoanContract {
         );
     }
     
+    // 定义转账事件
+    event FundTransferred(address indexed admin, address indexed enterprise, uint256 amount);
+    
+    /**
+     * @dev 接收以太币函数
+     * 允许向合约转入ETH，用于后续向企业发放贷款
+     */
+    receive() external payable {}
+    
+    /**
+     * @dev 回退函数
+     * 当调用不存在的函数且带有以太币时触发
+     */
+    fallback() external payable {}
+    
+    /**
+     * @dev 管理员向合约转账函数
+     * 允许管理员向合约转入以太币，用于后续向企业发放贷款
+     * 仅管理员可调用此函数
+     */
+    function adminDeposit() external payable onlyAdmin {
+        // 验证转账金额大于0
+        require(msg.value > 0, "Transfer amount must be greater than 0");
+        // 记录管理员存款事件
+        emit AdminDeposited(msg.sender, msg.value);
+    }
+    
+    /**
+     * @dev 管理员存款事件
+     * 用于记录管理员向合约的存款操作
+     */
+    event AdminDeposited(address indexed admin, uint256 amount);
+    
     /**
      * @dev 提交贷款申请
      * @param _isGreenLoan 是否申请绿色贷款
@@ -636,5 +669,37 @@ contract GreenLoanContract {
             loan.timestamp,
             loan.status
         );
+    }
+    
+    /**
+     * @dev 管理员向企业转账1个单位货币
+     * @param _enterprise 企业地址
+     * 管理员在企业成功申请贷款后调用此函数向企业转账1个单位货币
+     * 仅管理员可调用此函数
+     */
+    function transferFundToEnterprise(address payable _enterprise) external onlyAdmin {
+        require(_enterprise != address(0), "Invalid enterprise address");
+        require(enterprises[_enterprise].isVerified, "Enterprise not verified");
+        require(enterpriseLoans[_enterprise].length > 0, "Enterprise has no loan records");
+        
+        // 检查该企业是否有已批准但尚未收到转账的贷款
+        bool hasApprovedLoan = false;
+        for (uint i = 0; i < enterpriseLoans[_enterprise].length; i++) {
+            if (keccak256(bytes(enterpriseLoans[_enterprise][i].status)) == keccak256(bytes("approved"))) {
+                hasApprovedLoan = true;
+                break;
+            }
+        }
+        
+        require(hasApprovedLoan, "Enterprise has no approved loans");
+        
+        // 向企业转账1个单位货币（如ETH）
+        uint256 transferAmount = 1 ether;
+        require(address(this).balance >= transferAmount, "Insufficient contract balance");
+        
+        (bool success, ) = _enterprise.call{value: transferAmount}("");
+        require(success, "Transfer failed");
+        
+        emit FundTransferred(msg.sender, _enterprise, transferAmount);
     }
 }
