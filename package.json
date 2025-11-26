@@ -1,0 +1,30 @@
+{
+  "name": "greenfintech_demo",
+  "version": "1.0.0",
+  "description": "基于区块链技术的预制菜企业绿色贷款管理系统，旨在通过智能合约自动化管理企业环保表现评估、绿色积分计算以及绿色优惠贷款发放流程。该系统鼓励预制菜企业提高环保表现，实现绿色生产转型。",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/cpppp/GreenFintech-demo.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/cpppp/GreenFintech-demo/issues"
+  },
+  "homepage": "https://github.com/cpppp/GreenFintech-demo#readme",
+  "type": "module",
+  "devDependencies": {
+    "@nomicfoundation/hardhat-ignition": "^3.0.5",
+    "@nomicfoundation/hardhat-toolbox-viem": "^5.0.1",
+    "@types/node": "^22.19.1",
+    "forge-std": "github:foundry-rs/forge-std#v1.9.4",
+    "hardhat": "^3.0.15",
+    "typescript": "~5.8.0",
+    "viem": "^2.40.2"
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "name": "green-loan-frontend",
+  "version": "1.0.0",
+  "description": "预制菜企业绿色贷款智能合约前端",
+  "main": "index.html",
+  "scripts": {
+    "dev": "http-server -p 3000",
+    "start": "http-server -p 3000"
+  },
+  "dependencies": {
+    "http-server": "^14.1.1"
+  }
+}
