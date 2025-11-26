@@ -49,12 +49,7 @@
                 <section id="enterprise" class="page-section active">
                     <div class="contract-functions fade-in">
                         <h2>Enterprise Management</h2>
-                        <div class="function-card">
-                            <h3>Admin Information</h3>
-                            <button id="getAdmin" class="function-button">Get Admin Address</button>
-                            <div id="adminResult" class="result"></div>
-                        </div>
-
+                        <div class="function-cards-container">
                         <div class="function-card">
                             <h3>Register Enterprise</h3>
                             <input type="text" id="enterpriseName" placeholder="Enterprise Name" class="form-input">
@@ -67,6 +62,12 @@
                             <h3>Enterprise Information Query</h3>
                             <button id="getEnterpriseInfo" class="function-button">Query My Enterprise Info</button>
                             <div id="enterpriseInfoResult" class="result"></div>
+                        </div>
+
+                        <div class="function-card">
+                            <h3>Admin Information</h3>
+                            <button id="getAdmin" class="function-button">Get Admin Address</button>
+                            <div id="adminResult" class="result"></div>
                         </div>
 
                         <div class="function-card">
@@ -107,6 +108,7 @@
                             <button id="getEnterpriseLoan" class="function-button">Query Loan Records</button>
                             <div id="loanRecordResult" class="result"></div>
                         </div>
+                        </div>
                     </div>
                 </section>
 
@@ -114,6 +116,7 @@
                 <section id="admin" class="page-section">
                     <div class="contract-functions fade-in">
                         <h2>Admin Functions</h2>
+                        <div class="function-cards-container">
                         <div class="function-card">
                             <h3>Verify Enterprise</h3>
                             <input type="text" id="verifyEnterpriseAddress" placeholder="Enterprise Address" class="input-field">
@@ -140,6 +143,7 @@
                             <input type="number" id="ethAmount" placeholder="ETH Amount" class="input-field">
                             <button id="transferEthToContract" class="function-button">Transfer</button>
                             <div id="transferEthResult" class="result"></div>
+                        </div>
                         </div>
                     </div>
                 </section>

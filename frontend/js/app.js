@@ -136,28 +136,59 @@ async function connectWallet() {
             // 始终使用最新的ethereum对象重新初始化web3
             web3 = new Web3(window.ethereum);
             
+            // 如果之前有连接过账户，先清除当前账户状态，强制用户重新选择
+            // 这样可以确保每次连接时都能选择新的账户
+            if (currentAccount) {
+                currentAccount = null;
+            }
+            
             // 请求账户访问权限
-            const accounts = await window.ethereum.request({
-                method: 'eth_requestAccounts'
-            });
+            // 如果MetaMask已经授权过，它会自动返回已授权的账户
+            // 但我们可以通过先检查权限，然后重新请求来让用户选择账户
+            let accounts = [];
+            try {
+                // 先尝试获取已授权的账户
+                accounts = await window.ethereum.request({
+                    method: 'eth_accounts'
+                });
+                
+                // 如果已经有授权的账户，我们需要重新请求权限以让用户选择
+                // 使用 eth_requestAccounts 会弹出账户选择窗口（如果有多个账户）
+                accounts = await window.ethereum.request({
+                    method: 'eth_requestAccounts'
+                });
+            } catch (error) {
+                // 如果请求失败，可能是用户拒绝了
+                throw error;
+            }
             
             // 确保连接到正确的网络（Hardhat本地网络，chainId: 1337）
             const chainId = await web3.eth.getChainId();
             if (chainId !== 1337) {
                 try {
                     await switchToLocalNetwork();
+                    // 网络切换后，重新获取账户（因为网络切换可能会影响账户状态）
+                    accounts = await window.ethereum.request({
+                        method: 'eth_requestAccounts'
+                    });
                 } catch (error) {
                     console.error('网络切换失败:', error);
                     showResult('network-error', 'Please manually switch to local Hardhat network (http://localhost:8545)');
-                    // 即使网络切换失败，如果有账户，也应该继续处理
-                    if (accounts.length > 0) {
-                        handleAccountsChanged(accounts);
-                    }
                 }
+            }
+            
+            // 处理账户连接（无论网络是否正确）
+            if (accounts.length > 0) {
+                handleAccountsChanged(accounts);
+            } else {
+                throw new Error('No accounts found. Please unlock your wallet and try again.');
             }
         } catch (error) {
             console.error('连接钱包失败:', error);
             showResult('wallet-error', `Failed to connect wallet: ${error.message || 'Please try again'}`);
+            // 确保UI状态正确
+            currentAccount = null;
+            disconnectWallet();
         } finally {
             // 延迟恢复按钮状态，确保UI平滑过渡
             setTimeout(() => {
@@ -209,6 +240,7 @@ function handleAccountsChanged(accounts) {
 
 // 断开钱包连接
 function disconnectWallet() {
+    // 清除当前账户状态
     currentAccount = null;
     // 保留web3实例但重置contract
     contract = null;
@@ -217,7 +249,7 @@ function disconnectWallet() {
     connectWalletBtn.classList.remove('hidden');
     walletInfo.classList.add('hidden');
     connectionStatus.textContent = 'Connection: Not Connected';
-        connectionStatus.className = 'status offline';
+    connectionStatus.className = 'status offline';
     
     // 禁用功能按钮
     disableFunctionButtons();
@@ -225,6 +257,13 @@ function disconnectWallet() {
     // 重置连接按钮状态
     connectWalletBtn.disabled = false;
     connectWalletBtn.textContent = '连接钱包';
+    
+    // 清除账户地址显示
+    if (accountAddress) {
+        accountAddress.textContent = '0x0000...';
+    }
+    
+    console.log('钱包已断开连接，可以重新连接新账户');
 }
 
 // 处理网络变化
@@ -666,10 +705,10 @@ async function checkGreenLoanEligibility() {
         const accounts = await web3.eth.getAccounts();
         
         // 检查企业是否有资格申请绿色贷款和获取贷款利率信息
-        const [normalRate, greenRate, minGreenPoints, loanAmount, eligible] = await contract.methods.getLoanTypesInfo().call({ from: accounts[0] });
+        const [normalRate, greenRate, minGreenPoints, loanAmount, eligibleForGreen] = await contract.methods.getLoanTypesInfo().call({ from: accounts[0] });
         // 使用合约返回的实际值
         
-        let eligibleText = eligible ? 'Eligible for green loan' : 'Not eligible for green loan';
+        let eligibleText = eligibleForGreen ? 'Eligible for green loan' : 'Not eligible for green loan';
         const normalRatePercent = (normalRate / 10000 * 100).toFixed(2) + '%';
         const greenRatePercent = (greenRate / 10000 * 100).toFixed(2) + '%';
         

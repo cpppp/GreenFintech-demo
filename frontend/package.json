@@ -4,8 +4,8 @@
   "description": "预制菜企业绿色贷款智能合约前端",
   "main": "index.html",
   "scripts": {
-    "dev": "http-server -p 3000 -c-1",
-    "start": "http-server -p 3000 -c-1"
+    "dev": "http-server -p 8080 -c-1",
+    "start": "http-server -p 8080 -c-1"
   },
   "dependencies": {
     "http-server": "^14.1.1"
