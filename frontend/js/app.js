@@ -26,6 +26,7 @@ const verifyEnterpriseBtn = document.getElementById('verifyEnterprise');
 const verifyGreenDataBtn = document.getElementById('verifyGreenData');
 const getRegisteredEnterprisesBtn = document.getElementById('getRegisteredEnterprises');
 const transferEthToContractBtn = document.getElementById('transferEthToContract');
+const clearResultsBtn = document.getElementById('clearResults');
 
 // 初始化应用
 async function initApp() {
@@ -307,6 +308,68 @@ function showResult(elementId, message, isError = false) {
     }
 }
 
+// 清除所有结果显示
+function clearAllResults() {
+    try {
+        // 清除所有结果显示
+        const allResults = document.querySelectorAll('.result');
+        let clearedCount = 0;
+        allResults.forEach(result => {
+            if (result && result.innerHTML && result.innerHTML.trim() !== '') {
+                clearedCount++;
+                result.innerHTML = '';
+            }
+        });
+        
+        // 清除所有输入框
+        const allInputs = document.querySelectorAll('input[type="text"], input[type="number"]');
+        let inputCount = 0;
+        allInputs.forEach(input => {
+            if (input && input.value && input.value.trim() !== '') {
+                inputCount++;
+                input.value = '';
+            }
+        });
+        
+        // 清除选择框
+        const allSelects = document.querySelectorAll('select');
+        allSelects.forEach(select => {
+            if (select && select.options && select.options.length > 0) {
+                if (select.selectedIndex !== 0) {
+                    select.selectedIndex = 0;
+                }
+            }
+        });
+        
+        // 显示清除成功的提示
+        const message = clearedCount > 0 || inputCount > 0 
+            ? `已清除 ${clearedCount} 个结果显示和 ${inputCount} 个输入框内容` 
+            : '没有需要清除的内容';
+        
+        console.log('清除完成:', message);
+        
+        // 创建临时提示
+        const tempDiv = document.createElement('div');
+        tempDiv.style.cssText = 'position: fixed; top: 80px; right: 20px; background: #10b981; color: white; padding: 12px 20px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 10000; font-size: 14px; animation: slideIn 0.3s ease;';
+        tempDiv.textContent = '✓ ' + message;
+        document.body.appendChild(tempDiv);
+        
+        setTimeout(() => {
+            tempDiv.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+            tempDiv.style.opacity = '0';
+            tempDiv.style.transform = 'translateX(20px)';
+            setTimeout(() => {
+                if (tempDiv.parentNode) {
+                    document.body.removeChild(tempDiv);
+                }
+            }, 300);
+        }, 2000);
+    } catch (error) {
+        console.error('清除结果时出错:', error);
+        alert('清除结果时出错，请刷新页面');
+    }
+}
+
 // 向合约转账ETH（管理员功能）
 async function transferEthToContract() {
     if (!currentAccount || !contract) {
@@ -361,6 +424,9 @@ async function transferEthToContract() {
 // 事件监听
 connectWalletBtn.addEventListener('click', connectWallet);
 disconnectWalletBtn.addEventListener('click', disconnectWallet);
+if (clearResultsBtn) {
+    clearResultsBtn.addEventListener('click', clearAllResults);
+}
 
 // 初始化合约
 async function initContract() {
@@ -454,8 +520,8 @@ async function registerEnterprise() {
         registerEnterpriseBtn.disabled = true;
         const accounts = await web3.eth.getAccounts();
         
-        // 调用合约方法进行企业注册
-        const tx = await contract.methods.registerEnterprise(enterpriseName, socialCreditCode, 'industry', 'description', 'contact')
+        // 调用合约方法进行企业注册（只需要2个参数：name和socialCreditCodeHash）
+        const tx = await contract.methods.registerEnterprise(enterpriseName, socialCreditCode)
             .send({ from: accounts[0] });
         
         showResult('registerResult', `Enterprise registered successfully! Transaction Hash: ${tx.transactionHash.substring(0, 10)}...`);
@@ -491,14 +557,9 @@ async function submitGreenData() {
         submitGreenDataBtn.disabled = true;
         const accounts = await web3.eth.getAccounts();
         
-        // 发送交易，使用正确的函数名submitGreenData
-        // 获取相关参数
-        const carbonReduction = document.getElementById('carbonReduction').value;
-        const energyConsumption = document.getElementById('energyConsumption').value;
-        const emissionReduction = document.getElementById('emissionReduction').value;
-        
-        const tx = await contract.methods.submitGreenData(
-            dataType, parseFloat(carbonReduction), parseFloat(energyConsumption), parseFloat(emissionReduction), 'detail'
+        // 发送交易，使用正确的函数名uploadGreenData（需要3个参数：baseline, actualData, dataType）
+        const tx = await contract.methods.uploadGreenData(
+            parseFloat(baseline), parseFloat(actualData), dataType
         ).send({ from: accounts[0] });
         
         showResult('dataResult', `Green data submitted successfully! Transaction Hash: ${tx.transactionHash.substring(0, 10)}...`);
@@ -529,19 +590,17 @@ async function getEnterpriseInfo() {
         // 调用合约方法获取企业信息
         const info = await contract.methods.getEnterpriseInfo().call({ from: accounts[0] });
         
-        // 处理返回结果
+        // 处理返回结果（合约返回4个字段：name, socialCreditCodeHash, isVerified, totalPoints）
         let name = info[0];
         let socialCreditCode = info[1];
-        let industry = info[2];
-        let isVerified = info[3];
-        let totalPoints = info[4];
+        let isVerified = info[2];
+        let totalPoints = info[3];
         
         let status = isVerified ? '已认证' : '待认证';
         
         showResult('enterpriseInfoResult', 
             `Enterprise Name: ${name}<br>` +
             `Social Credit Code Hash: ${socialCreditCode}<br>` +
-            `Industry: ${industry}<br>` +
             `Verification Status: ${status}<br>` +
             `Total Points: ${totalPoints}`
         );
@@ -567,8 +626,8 @@ async function getEnterpriseData() {
         const accounts = await web3.eth.getAccounts();
         
         if (dataIdInput === '') {
-            // 获取数据总数，将当前账户地址作为参数
-            const count = await contract.methods.getEnterpriseDataCount(accounts[0]).call({ from: accounts[0] });
+            // 获取数据总数（不需要参数，自动使用msg.sender）
+            const count = await contract.methods.getEnterpriseDataCount().call({ from: accounts[0] });
             showResult('enterpriseDataResult', `You have ${count} green data records`);
         } else {
             // 查询指定绿色数据
@@ -639,49 +698,73 @@ async function getEnterpriseLoan() {
         return;
     }
     
-    const loanIdInput = document.getElementById('loanId').value;
+    const loanIdInput = document.getElementById('loanId').value.trim();
     
     try {
         getEnterpriseLoanBtn.disabled = true;
         const accounts = await web3.eth.getAccounts();
         
         if (loanIdInput === '') {
-            // 获取贷款总数，将当前账户地址作为参数
-            const count = await contract.methods.getEnterpriseLoanCount(accounts[0]).call({ from: accounts[0] });
+            // 获取贷款总数（不需要参数，自动使用msg.sender）
+            const count = await contract.methods.getEnterpriseLoanCount().call({ from: accounts[0] });
             
-            if (count === 0) {
+            if (count === 0 || count === '0') {
                 showResult('loanRecordResult', '您没有贷款记录');
             } else {
                 let resultHtml = `You have ${count} loan records:<br><br>`;
                 
                 // 循环获取每一条贷款记录的详细信息
-                for (let i = 0; i < count; i++) {
-                    const [id, isGreenLoan, rate, amount, timestamp, status] = await contract.methods.getEnterpriseLoan(i).call({ from: accounts[0] });
-                    
-                    let loanType = isGreenLoan ? 'Green Loan' : 'Normal Loan';
-                    let interestRate = (rate / 10000 * 100).toFixed(2) + '%';
-                    let ethAmount = web3.utils.fromWei(amount, 'ether');
-                    let date = new Date(timestamp * 1000).toLocaleString();
-                    
-                    resultHtml += `Loan ${i+1}:<br>` +
-                        `Loan ID: ${id}<br>` +
-                        `Loan Type: ${loanType}<br>` +
-                        `Interest Rate: ${interestRate}<br>` +
-                        `Loan Amount: ${ethAmount} ETH<br>` +
-                        `Application Time: ${date}<br>` +
-                        `Status: ${status}<br><br>`;
+                const countNum = parseInt(count.toString());
+                for (let i = 0; i < countNum; i++) {
+                    try {
+                        const result = await contract.methods.getEnterpriseLoan(i).call({ from: accounts[0] });
+                        const id = result.id || result[0];
+                        const isGreenLoan = result.isGreenLoan !== undefined ? result.isGreenLoan : result[1];
+                        const rate = result.rate || result[2];
+                        const amount = result.amount || result[3];
+                        const timestamp = result.timestamp || result[4];
+                        const status = result.status || result[5];
+                        
+                        let loanType = isGreenLoan ? 'Green Loan' : 'Normal Loan';
+                        let interestRate = (parseInt(rate.toString()) / 10000 * 100).toFixed(2) + '%';
+                        let ethAmount = web3.utils.fromWei(amount.toString(), 'ether');
+                        let date = new Date(parseInt(timestamp.toString()) * 1000).toLocaleString();
+                        
+                        resultHtml += `Loan ${i+1}:<br>` +
+                            `Loan ID: ${id}<br>` +
+                            `Loan Type: ${loanType}<br>` +
+                            `Interest Rate: ${interestRate}<br>` +
+                            `Loan Amount: ${ethAmount} ETH<br>` +
+                            `Application Time: ${date}<br>` +
+                            `Status: ${status}<br><br>`;
+                    } catch (err) {
+                        console.error(`获取贷款记录 ${i} 失败:`, err);
+                        resultHtml += `Loan ${i+1}: Error loading data<br><br>`;
+                    }
                 }
                 
                 showResult('loanRecordResult', resultHtml);
             }
         } else {
-            // 查询指定贷款
-            const [id, isGreenLoan, rate, amount, timestamp, status] = await contract.methods.getEnterpriseLoan(loanIdInput).call({ from: accounts[0] });
+            // 查询指定贷款 - 使用索引而不是loanId
+            const loanIndex = parseInt(loanIdInput);
+            if (isNaN(loanIndex) || loanIndex < 0) {
+                showResult('loanRecordResult', '请输入有效的贷款索引（从0开始）', true);
+                return;
+            }
+            
+            const result = await contract.methods.getEnterpriseLoan(loanIndex).call({ from: accounts[0] });
+            const id = result.id || result[0];
+            const isGreenLoan = result.isGreenLoan !== undefined ? result.isGreenLoan : result[1];
+            const rate = result.rate || result[2];
+            const amount = result.amount || result[3];
+            const timestamp = result.timestamp || result[4];
+            const status = result.status || result[5];
             
             let loanType = isGreenLoan ? '绿色贷款' : '普通贷款';
-            let interestRate = (rate / 10000 * 100).toFixed(2) + '%';
-            let ethAmount = web3.utils.fromWei(amount, 'ether');
-            let date = new Date(timestamp * 1000).toLocaleString();
+            let interestRate = (parseInt(rate.toString()) / 10000 * 100).toFixed(2) + '%';
+            let ethAmount = web3.utils.fromWei(amount.toString(), 'ether');
+            let date = new Date(parseInt(timestamp.toString()) * 1000).toLocaleString();
             
             showResult('loanRecordResult', 
                 `Loan ID: ${id}<br>` +
@@ -818,16 +901,22 @@ async function applyLoan() {
         const tx = await contract.methods.applyForLoan(isGreenLoan)
             .send({ from: accounts[0] });
         
-        // 获取贷款信息
-        const loanId = tx.events[0].returnValues.loanId;
-        const amount = tx.events[0].returnValues.amount;
-        const interestRate = tx.events[0].returnValues.interestRate;
+        // 从事件中获取贷款信息
+        const loanAppliedEvent = tx.events.LoanApplied || tx.events[0];
+        const loanApprovedEvent = tx.events.LoanApproved || tx.events[1];
+        
+        const loanId = loanAppliedEvent ? loanAppliedEvent.returnValues.loanId : 'N/A';
+        const amount = loanApprovedEvent ? loanApprovedEvent.returnValues.amount : '0';
+        const interestRate = loanApprovedEvent ? loanApprovedEvent.returnValues.rate : '0';
+        
+        const ratePercent = interestRate !== '0' ? (parseInt(interestRate) / 10000 * 100).toFixed(2) + '%' : 'N/A';
+        const amountInEth = amount !== '0' ? web3.utils.fromWei(amount.toString(), 'ether') : 'N/A';
         
         showResult('loanResult', 
-            `Loan application successful!\n` +
-            `Loan ID: ${loanId}\n` +
-            `Loan Amount: ${web3.utils.fromWei(amount)} ETH\n` +
-            `Interest Rate: ${web3.utils.fromWei(interestRate)}%`
+            `Loan application successful!<br>` +
+            `Loan ID: ${loanId}<br>` +
+            `Loan Amount: ${amountInEth} ETH<br>` +
+            `Interest Rate: ${ratePercent}`
         );
     } catch (error) {
         console.error('申请贷款失败:', error);
@@ -837,24 +926,11 @@ async function applyLoan() {
     }
 }
 
-// 页面切换和侧边栏交互功能
+// 页面切换功能
 function setupPageNavigation() {
-    // 侧边栏导航按钮
-    const menuToggle = document.getElementById('sidebarToggle');
-    const sidebar = document.getElementById('sidebar');
-    const mainContent = document.querySelector('.main-content');
-    
     // 页面导航元素
     const navLinks = document.querySelectorAll('.nav-link');
     const pageSections = document.querySelectorAll('.page-section');
-    
-    // 侧边栏切换
-    if (menuToggle) {
-        menuToggle.addEventListener('click', () => {
-            sidebar.classList.toggle('active');
-            mainContent.classList.toggle('sidebar-active');
-        });
-    }
     
     // 页面切换功能
     if (navLinks.length > 0 && pageSections.length > 0) {
@@ -873,18 +949,13 @@ function setupPageNavigation() {
                 pageSections.forEach(section => {
                     if (section.id === targetId) {
                         section.classList.add('active');
-                        section.classList.remove('hidden');
                     } else {
                         section.classList.remove('active');
-                        section.classList.add('hidden');
                     }
                 });
                 
-                // 在移动设备上点击导航后关闭侧边栏
-                if (window.innerWidth <= 768) {
-                    sidebar.classList.remove('active');
-                    mainContent.classList.remove('sidebar-active');
-                }
+                // 平滑滚动到顶部
+                window.scrollTo({ top: 0, behavior: 'smooth' });
             });
         });
     }
@@ -910,22 +981,20 @@ initApp = async function() {
     await originalInitApp();
     setupPageNavigation();
     
-    // 默认显示控制面板页面
-    const dashboardPage = document.getElementById('dashboard');
-    if (dashboardPage) {
-        dashboardPage.classList.add('active');
-        dashboardPage.classList.remove('hidden');
+    // 默认显示企业页面
+    const enterprisePage = document.getElementById('enterprise');
+    if (enterprisePage) {
+        enterprisePage.classList.add('active');
     }
     
     // 隐藏其他页面
-    const otherPages = document.querySelectorAll('.page-section:not(#dashboard)');
+    const otherPages = document.querySelectorAll('.page-section:not(#enterprise)');
     otherPages.forEach(page => {
         page.classList.remove('active');
-        page.classList.add('hidden');
     });
     
     // 设置默认活动导航项
-    const defaultNavItem = document.querySelector('.nav-link[href="#dashboard"]');
+    const defaultNavItem = document.querySelector('.nav-link[href="#enterprise"]');
     if (defaultNavItem) {
         defaultNavItem.classList.add('active');
     }

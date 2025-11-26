@@ -5,112 +5,48 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Green Loan Smart Contract for Ready-to-Eat Food Enterprises</title>
     <link rel="stylesheet" href="css/styles.css">
-    <meta name="theme-color" content="#2e8b57">
+    <meta name="theme-color" content="#2563eb">
     <script src="https://cdn.jsdelivr.net/npm/web3@latest/dist/web3.min.js"></script>
 </head>
 <body class="fade-in">
     <header class="header">
         <div class="container">
-            <button id="sidebarToggle" class="sidebar-toggle">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <line x1="3" y1="12" x2="21" y2="12"></line>
-                    <line x1="3" y1="6" x2="21" y2="6"></line>
-                    <line x1="3" y1="18" x2="21" y2="18"></line>
-                </svg>
-            </button>
-            <h1>Green Loan Smart Contract</h1>
+            <div class="header-left">
+                <h1>Green Loan Platform</h1>
+            </div>
+            <nav class="top-nav">
+                <ul class="nav-menu">
+                    <li>
+                        <a href="#enterprise" class="nav-link active" data-section="enterprise">
+                            <span>Enterprise</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#admin" class="nav-link" data-section="admin">
+                            <span>Admin</span>
+                        </a>
+                    </li>
+                </ul>
+            </nav>
             <div class="wallet-section">
                 <button id="connectWallet" class="wallet-button">Connect Wallet</button>
                 <div id="walletInfo" class="wallet-info hidden">
                     <span id="accountAddress" class="account-address">0x0000...</span>
                     <button id="disconnectWallet" class="disconnect-button">Disconnect</button>
                 </div>
+                <button id="clearResults" class="clear-button" title="清除所有测试结果">清除结果</button>
                 <div class="status-indicator" id="connectionStatusIndicator">
-                    <span id="connectionStatus" class="status offline">Connection: Not Connected</span>
+                    <span id="connectionStatus" class="status offline">Not Connected</span>
                 </div>
             </div>
         </div>
     </header>
 
     <div class="app-container">
-        <aside id="sidebar" class="sidebar">
-            <nav class="sidebar-nav">
-                <ul>
-                    <li>
-                        <a href="#dashboard" class="nav-link active" data-section="dashboard">
-                            <svg class="nav-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-                                <line x1="3" y1="9" x2="21" y2="9"></line>
-                                <line x1="9" y1="21" x2="9" y2="9"></line>
-                            </svg>
-                            <span>Dashboard</span>
-                        </a>
-                    </li>
-                    <li>
-                        <a href="#enterprise" class="nav-link" data-section="enterprise">
-                            <svg class="nav-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-                                <circle cx="9" cy="7" r="4"></circle>
-                                <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
-                                <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-                            </svg>
-                            <span>Enterprise Management</span>
-                        </a>
-                    </li>
-                    <li>
-                        <a href="#green-data" class="nav-link" data-section="green-data">
-                            <svg class="nav-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M18 8h1a4 4 0 0 1 0 8h-1"></path>
-                                <path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"></path>
-                                <line x1="6" y1="1" x2="6" y2="4"></line>
-                                <line x1="10" y1="1" x2="10" y2="4"></line>
-                                <line x1="14" y1="1" x2="14" y2="4"></line>
-                            </svg>
-                            <span>Green Data Management</span>
-                        </a>
-                    </li>
-                    <li>
-                        <a href="#loan" class="nav-link" data-section="loan">
-                            <svg class="nav-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <line x1="12" y1="1" x2="12" y2="23"></line>
-                                <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
-                            </svg>
-                            <span>Loan Management</span>
-                        </a>
-                    </li>
-                    <li>
-                        <a href="#admin" class="nav-link" data-section="admin">
-                            <svg class="nav-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M12 2a10 10 0 0 0-9.95 9h11.64L9.74 7.05a1 1 0 0 1 1.41-1.41l5.66 5.65a1 1 0 0 1 0 1.42l-5.66 5.65a1 1 0 0 1-1.41-1.41L13.69 13H2.05A10 10 0 1 0 12 2z"></path>
-                            </svg>
-                            <span>Admin Functions</span>
-                        </a>
-                    </li>
-                </ul>
-            </nav>
-        </aside>
-
         <main class="main-content">
             <div class="container">
-                <!-- 控制面板页面 -->
-                <section id="dashboard" class="page-section active">
-                    <div class="contract-info fade-in">
-                        <h2>Contract Information</h2>
-                        <div class="info-card">
-                            <p><strong>Contract Address:</strong> <span id="contractAddress" class="address-display">0x5FbDB2315678afecb367f032d93F642f64180aa3</span></p>
-                            <p><strong>Network:</strong> <span id="networkName">未连接</span></p>
-                        </div>
-                    </div>
-                    
-                    <div class="welcome-card fade-in">
-                        <h2>Welcome to Green Loan Smart Contract System</h2>
-                        <p>This system provides green loan services for ready-to-eat food enterprises, helping businesses apply for preferential loans through green data.</p>
-                        <p>Please use the left navigation bar to access different functional modules.
-                    </div>
-                </section>
-
                 <!-- 企业管理页面 -->
-                <section id="enterprise" class="page-section">
+                <section id="enterprise" class="page-section active">
                     <div class="contract-functions fade-in">
                         <h2>Enterprise Management</h2>
                         <div class="function-card">
@@ -132,13 +68,7 @@
                             <button id="getEnterpriseInfo" class="function-button">Query My Enterprise Info</button>
                             <div id="enterpriseInfoResult" class="result"></div>
                         </div>
-                    </div>
-                </section>
 
-                <!-- 绿色数据管理页面 -->
-                <section id="green-data" class="page-section">
-                    <div class="contract-functions fade-in">
-                        <h2>Green Data Management</h2>
                         <div class="function-card">
                             <h3>Submit Green Data</h3>
                             <input type="number" id="baseline" placeholder="Baseline Value" class="input-field">
@@ -154,13 +84,7 @@
                             <button id="getEnterpriseData" class="function-button">Query Data Records</button>
                             <div id="enterpriseDataResult" class="result"></div>
                         </div>
-                    </div>
-                </section>
 
-                <!-- 贷款管理页面 -->
-                <section id="loan" class="page-section">
-                    <div class="contract-functions fade-in">
-                        <h2>Loan Management</h2>
                         <div class="function-card">
                             <h3>Check Green Loan Eligibility</h3>
                             <button id="checkGreenLoanEligibility" class="function-button">Check Eligibility</button>
@@ -179,7 +103,7 @@
 
                         <div class="function-card">
                             <h3>Query Loan Records</h3>
-                            <input type="number" id="loanId" placeholder="Loan ID (Optional)" class="input-field">
+                            <input type="number" id="loanId" placeholder="Loan Index (Optional, starts from 0)" class="input-field">
                             <button id="getEnterpriseLoan" class="function-button">Query Loan Records</button>
                             <div id="loanRecordResult" class="result"></div>
                         </div>

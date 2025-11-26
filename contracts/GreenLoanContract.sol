@@ -148,7 +148,7 @@ contract GreenLoanContract {
         normalLoanRate = 450; // 4.5%
         greenLoanRate = 430;  // 4.3%
         fixedLoanAmount = 1000000; // 100万
-        greenThreshold = 15; // 15%
+        greenThreshold = 15; // 15%减少率，即实际数据≤基准线的85%时达标
         minPointsForGreenLoan = 100; // 100分
         dataValidPeriod = 90 * 24 * 60 * 60; // 90天
     }
@@ -339,11 +339,19 @@ contract GreenLoanContract {
         data.isValid = true;
         
         // 计算积分
+        // 要求：实际数据 ≤ 基准线的85%（即减少率 ≥ 15%）
         uint256 points = 0;
         if (_dataId < enterpriseData[_enterprise].length) {
+            // 计算减少的绝对值和减少率
+            require(data.baseline > 0, "Baseline must be greater than 0");
+            require(data.actualData <= data.baseline, "Actual data cannot exceed baseline");
+            
             uint256 reduction = data.baseline - data.actualData;
+            // 计算减少率（百分比）
             uint256 reductionPercentage = (reduction * 100) / data.baseline;
             
+            // 检查是否达到85%完成度（即减少率≥15%）
+            // 等价于：actualData <= baseline * 85 / 100
             if (reductionPercentage >= greenThreshold) {
                 points = 100; // 达标授予100分
                 enterprises[_enterprise].totalPoints += points;
