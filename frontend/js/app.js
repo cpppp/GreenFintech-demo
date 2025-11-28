@@ -695,26 +695,44 @@ async function getEnterpriseData() {
 
 // 检查绿色贷款资格
 async function checkGreenLoanEligibility() {
+    console.log('检查绿色贷款资格函数开始执行');
+    
     if (!contract || !web3) {
+        console.log('合约未初始化或钱包未连接');
         showResult('eligibilityResult', '合约未初始化或钱包未连接', true);
         return;
     }
     
     try {
+        console.log('按钮禁用状态设置');
         checkGreenLoanEligibilityBtn.disabled = true;
-        const accounts = await web3.eth.getAccounts();
         
+        console.log('获取账户信息');
+        const accounts = await web3.eth.getAccounts();
+        console.log('当前账户:', accounts[0]);
+        
+        console.log('调用合约方法getLoanTypesInfo');
         // 检查企业是否有资格申请绿色贷款和获取贷款利率信息
-        const [normalRate, greenRate, minGreenPoints, loanAmount, eligibleForGreen] = await contract.methods.getLoanTypesInfo().call({ from: accounts[0] });
-        // 使用合约返回的实际值
+        const result = await contract.methods.getLoanTypesInfo().call({ from: accounts[0] });
+        console.log('合约返回结果:', result);
+        
+        // 安全地解构返回值
+        const normalRate = result[0];
+        const greenRate = result[1];
+        const minGreenPoints = result[2];
+        const loanAmount = result[3];
+        const eligibleForGreen = result[4];
+        
+        console.log('解构后的值:', {normalRate, greenRate, minGreenPoints, loanAmount, eligibleForGreen});
         
         let eligibleText = eligibleForGreen ? 'Eligible for green loan' : 'Not eligible for green loan';
-        const normalRatePercent = (normalRate / 10000 * 100).toFixed(2) + '%';
-        const greenRatePercent = (greenRate / 10000 * 100).toFixed(2) + '%';
+        const normalRatePercent = (parseInt(normalRate.toString()) / 10000 * 100).toFixed(2) + '%';
+        const greenRatePercent = (parseInt(greenRate.toString()) / 10000 * 100).toFixed(2) + '%';
         
         // 将贷款金额转换为ETH
         const amountInEth = web3.utils.fromWei(loanAmount.toString(), 'ether');
         
+        console.log('准备显示结果');
         showResult('eligibilityResult', 
             `${eligibleText}<br>` +
             `Normal Loan Rate: ${normalRatePercent}<br>` +
@@ -723,9 +741,12 @@ async function checkGreenLoanEligibility() {
             `Fixed Loan Amount: ${amountInEth} ETH`
         );
     } catch (error) {
-        console.error('检查绿色贷款资格失败:', error);
-        showResult('eligibilityResult', `检查绿色贷款资格失败: ${error.message}`, true);
+        console.error('检查绿色贷款资格失败详细错误:', error);
+        const errorDetails = error.toString();
+        console.log('错误字符串:', errorDetails);
+        showResult('eligibilityResult', `检查绿色贷款资格失败: ${errorDetails}`, true);
     } finally {
+        console.log('恢复按钮状态');
         checkGreenLoanEligibilityBtn.disabled = false;
     }
 }
