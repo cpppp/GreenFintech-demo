@@ -34,7 +34,7 @@
                     <span id="accountAddress" class="account-address">0x0000...</span>
                     <button id="disconnectWallet" class="disconnect-button">Disconnect</button>
                 </div>
-                <button id="clearResults" class="clear-button" title="清除所有测试结果">清除结果</button>
+                <button id="clearResults" class="clear-button hidden" title="清除所有测试结果">清除结果</button>
                 <div class="status-indicator" id="connectionStatusIndicator">
                     <span id="connectionStatus" class="status offline">Not Connected</span>
                 </div>
@@ -143,6 +143,13 @@
                             <input type="number" id="ethAmount" placeholder="ETH Amount" class="input-field">
                             <button id="transferEthToContract" class="function-button">Transfer</button>
                             <div id="transferEthResult" class="result"></div>
+                        </div>
+                        
+                        <div class="function-card">
+                            <h3>Transfer Fund to Enterprise</h3>
+                            <input type="text" id="transferFundEnterpriseAddress" placeholder="Enterprise Address" class="input-field">
+                            <button id="transferFundToEnterprise" class="function-button">Transfer 1 ETH to Enterprise</button>
+                            <div id="transferFundResult" class="result"></div>
                         </div>
                         </div>
                     </div>
