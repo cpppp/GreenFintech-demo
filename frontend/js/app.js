@@ -26,6 +26,7 @@ const verifyEnterpriseBtn = document.getElementById('verifyEnterprise');
 const verifyGreenDataBtn = document.getElementById('verifyGreenData');
 const getRegisteredEnterprisesBtn = document.getElementById('getRegisteredEnterprises');
 const transferEthToContractBtn = document.getElementById('transferEthToContract');
+const transferFundToEnterpriseBtn = document.getElementById('transferFundToEnterprise');
 const clearResultsBtn = document.getElementById('clearResults');
 
 // 初始化应用
@@ -136,29 +137,52 @@ async function connectWallet() {
             // 始终使用最新的ethereum对象重新初始化web3
             web3 = new Web3(window.ethereum);
             
-            // 如果之前有连接过账户，先清除当前账户状态，强制用户重新选择
-            // 这样可以确保每次连接时都能选择新的账户
+            // 清除之前的账户状态，确保可以连接新账户
             if (currentAccount) {
                 currentAccount = null;
             }
             
             // 请求账户访问权限
-            // 如果MetaMask已经授权过，它会自动返回已授权的账户
-            // 但我们可以通过先检查权限，然后重新请求来让用户选择账户
+            // 使用 eth_requestAccounts 会弹出账户选择窗口，让用户选择要连接的账户
             let accounts = [];
             try {
-                // 先尝试获取已授权的账户
-                accounts = await window.ethereum.request({
+                // 先检查是否有已授权的账户
+                const existingAccounts = await window.ethereum.request({
                     method: 'eth_accounts'
                 });
                 
-                // 如果已经有授权的账户，我们需要重新请求权限以让用户选择
-                // 使用 eth_requestAccounts 会弹出账户选择窗口（如果有多个账户）
+                // 如果有已授权的账户，尝试使用 wallet_requestPermissions 来重新请求权限
+                // 这可以让用户重新选择账户（如果 MetaMask 支持）
+                if (existingAccounts && existingAccounts.length > 0) {
+                    try {
+                        // 尝试撤销之前的权限（如果支持）
+                        // 注意：MetaMask 可能不支持直接撤销权限，但我们可以尝试
+                        await window.ethereum.request({
+                            method: 'wallet_requestPermissions',
+                            params: [{ eth_accounts: {} }]
+                        });
+                    } catch (permError) {
+                        // 如果权限请求失败，继续使用 eth_requestAccounts
+                        console.log('权限请求处理:', permError);
+                    }
+                }
+                
+                // 使用 eth_requestAccounts，这会显示账户选择窗口
+                // 如果用户有多个账户，MetaMask 会显示选择窗口
+                // 如果只有一个账户，MetaMask 会直接使用该账户
                 accounts = await window.ethereum.request({
                     method: 'eth_requestAccounts'
                 });
+                
+                // 如果用户取消了选择或没有账户，抛出错误
+                if (!accounts || accounts.length === 0) {
+                    throw new Error('No account selected. Please select an account in MetaMask.');
+                }
             } catch (error) {
-                // 如果请求失败，可能是用户拒绝了
+                // 如果用户拒绝了连接请求
+                if (error.code === 4001) {
+                    throw new Error('User rejected the connection request.');
+                }
                 throw error;
             }
             
@@ -168,24 +192,40 @@ async function connectWallet() {
                 try {
                     await switchToLocalNetwork();
                     // 网络切换后，重新获取账户（因为网络切换可能会影响账户状态）
+                    // 但这次不需要再次请求权限，因为已经授权过了
                     accounts = await window.ethereum.request({
-                        method: 'eth_requestAccounts'
+                        method: 'eth_accounts'
                     });
+                    
+                    // 如果网络切换后账户列表为空，重新请求
+                    if (!accounts || accounts.length === 0) {
+                        accounts = await window.ethereum.request({
+                            method: 'eth_requestAccounts'
+                        });
+                    }
                 } catch (error) {
                     console.error('网络切换失败:', error);
                     showResult('network-error', 'Please manually switch to local Hardhat network (http://localhost:8545)');
+                    // 即使网络切换失败，如果已有账户，也继续处理
                 }
             }
             
             // 处理账户连接（无论网络是否正确）
-            if (accounts.length > 0) {
+            if (accounts && accounts.length > 0) {
                 handleAccountsChanged(accounts);
             } else {
                 throw new Error('No accounts found. Please unlock your wallet and try again.');
             }
         } catch (error) {
             console.error('连接钱包失败:', error);
-            showResult('wallet-error', `Failed to connect wallet: ${error.message || 'Please try again'}`);
+            let errorMessage = error.message || 'Please try again';
+            // 提供更友好的错误信息
+            if (errorMessage.includes('rejected')) {
+                errorMessage = '连接请求被取消，请重试';
+            } else if (errorMessage.includes('No account selected')) {
+                errorMessage = '未选择账户，请在 MetaMask 中选择账户';
+            }
+            showResult('wallet-error', `连接失败: ${errorMessage}`, true);
             // 确保UI状态正确
             currentAccount = null;
             disconnectWallet();
@@ -241,6 +281,7 @@ function handleAccountsChanged(accounts) {
 // 断开钱包连接
 function disconnectWallet() {
     // 清除当前账户状态
+    const previousAccount = currentAccount;
     currentAccount = null;
     // 保留web3实例但重置contract
     contract = null;
@@ -264,6 +305,11 @@ function disconnectWallet() {
     }
     
     console.log('钱包已断开连接，可以重新连接新账户');
+    console.log('之前的账户:', previousAccount);
+    
+    // 注意：MetaMask 的授权状态是持久化的，断开连接不会清除授权
+    // 重新连接时，MetaMask 会显示账户选择窗口（如果有多个账户）
+    // 或者直接使用之前授权的账户（如果只有一个账户）
 }
 
 // 处理网络变化
@@ -433,7 +479,7 @@ async function transferEthToContract() {
         
         // 禁用按钮
         transferEthToContractBtn.disabled = true;
-        transferEthToContractBtn.innerHTML = '<div class="loading"></div> 转账中...';
+        transferEthToContractBtn.innerHTML = '<div class="loading"></div> Transferring...';
         
         // 转换为wei
         const weiAmount = web3.utils.toWei(ethAmount.toString(), 'ether');
@@ -452,11 +498,80 @@ async function transferEthToContract() {
         
     } catch (error) {
         console.error('转账失败:', error);
-        showResult('transferEthResult', `转账失败: ${error.message}`, true);
+        showResult('transferEthResult', `Transfer failed: ${error.message}`, true);
     } finally {
         // 启用按钮
         transferEthToContractBtn.disabled = false;
-        transferEthToContractBtn.textContent = '转账';
+        transferEthToContractBtn.textContent = 'Transfer';
+    }
+}
+
+// 管理员向企业转账（管理员功能）
+async function transferFundToEnterprise() {
+    if (!currentAccount || !contract) {
+        showResult('transferFundResult', '请先连接钱包', true);
+        return;
+    }
+    
+    const enterpriseAddress = document.getElementById('transferFundEnterpriseAddress').value.trim();
+    
+    if (!enterpriseAddress) {
+        showResult('transferFundResult', 'Please enter enterprise address', true);
+        return;
+    }
+    
+    // 验证地址格式
+    if (!web3.utils.isAddress(enterpriseAddress)) {
+        showResult('transferFundResult', 'Invalid Ethereum address format', true);
+        return;
+    }
+    
+    try {
+        // 检查是否为管理员
+        const admin = await contract.methods.admin().call();
+        if (admin.toLowerCase() !== currentAccount.toLowerCase()) {
+            showResult('transferFundResult', '只有管理员可以执行此操作', true);
+            return;
+        }
+        
+        // 禁用按钮
+        transferFundToEnterpriseBtn.disabled = true;
+        transferFundToEnterpriseBtn.innerHTML = '<div class="loading"></div> 转账中...';
+        
+        // 调用合约的transferFundToEnterprise函数
+        const tx = await contract.methods.transferFundToEnterprise(enterpriseAddress)
+            .send({ 
+                from: currentAccount
+            });
+        
+        showResult('transferFundResult', 
+            `Transfer successful!<br>` +
+            `Transaction Hash: ${tx.transactionHash}<br>` +
+            `Enterprise Address: ${enterpriseAddress}<br>` +
+            `Amount: 1 ETH`
+        );
+        
+        // 清空输入框
+        document.getElementById('transferFundEnterpriseAddress').value = '';
+        
+    } catch (error) {
+        console.error('转账失败:', error);
+        let errorMessage = error.message || 'Unknown error';
+        // 提取更友好的错误信息
+        if (errorMessage.includes('Enterprise not verified')) {
+            errorMessage = '企业未通过验证';
+        } else if (errorMessage.includes('has no loan records')) {
+            errorMessage = '企业没有贷款记录';
+        } else if (errorMessage.includes('has no approved loans')) {
+            errorMessage = '企业没有已批准的贷款';
+        } else if (errorMessage.includes('Insufficient contract balance')) {
+            errorMessage = '合约余额不足，请先向合约转账';
+        }
+        showResult('transferFundResult', `转账失败: ${errorMessage}`, true);
+    } finally {
+        // 启用按钮
+        transferFundToEnterpriseBtn.disabled = false;
+        transferFundToEnterpriseBtn.textContent = 'Transfer 1 ETH to Enterprise';
     }
 }
 
@@ -504,6 +619,7 @@ function enableFunctionButtons() {
     verifyEnterpriseBtn.disabled = false;
     verifyGreenDataBtn.disabled = false;
     getRegisteredEnterprisesBtn.disabled = false;
+    transferFundToEnterpriseBtn.disabled = false;
 }
 
 // 禁用功能按钮
@@ -519,6 +635,7 @@ function disableFunctionButtons() {
     verifyEnterpriseBtn.disabled = true;
     verifyGreenDataBtn.disabled = true;
     getRegisteredEnterprisesBtn.disabled = true;
+    transferFundToEnterpriseBtn.disabled = true;
 }
 
 // 获取管理员地址
@@ -1034,6 +1151,7 @@ verifyEnterpriseBtn.addEventListener('click', verifyEnterprise);
 verifyGreenDataBtn.addEventListener('click', verifyGreenDataAction);
 getRegisteredEnterprisesBtn.addEventListener('click', getRegisteredEnterprises);
 transferEthToContractBtn.addEventListener('click', transferEthToContract);
+transferFundToEnterpriseBtn.addEventListener('click', transferFundToEnterprise);
 
 // 扩展initApp函数以包含页面导航设置
 const originalInitApp = initApp;
