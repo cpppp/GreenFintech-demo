@@ -132,7 +132,7 @@ async function connectWallet() {
     if (typeof window.ethereum !== 'undefined') {
         try {
             connectWalletBtn.disabled = true;
-            connectWalletBtn.innerHTML = '<div class="loading"></div> 连接中...';
+            connectWalletBtn.innerHTML = '<div class="loading"></div> Connecting...';
             
             // 始终使用最新的ethereum对象重新初始化web3
             web3 = new Web3(window.ethereum);
@@ -234,7 +234,7 @@ async function connectWallet() {
             setTimeout(() => {
                 if (!currentAccount) { // 只有在没有成功连接时才恢复原始状态
                     connectWalletBtn.disabled = false;
-                    connectWalletBtn.textContent = '连接钱包';
+                    connectWalletBtn.textContent = 'Connect Wallet';
                 }
             }, 300);
         }
@@ -297,7 +297,7 @@ function disconnectWallet() {
     
     // 重置连接按钮状态
     connectWalletBtn.disabled = false;
-    connectWalletBtn.textContent = '连接钱包';
+    connectWalletBtn.textContent = 'Connect Wallet';
     
     // 清除账户地址显示
     if (accountAddress) {
